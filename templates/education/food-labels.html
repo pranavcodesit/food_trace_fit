@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Label Guide - Food Scanner</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/icons.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <style>
+        .education-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .education-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease;
+        }
+        
+        .education-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .education-card h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .education-card h3 {
+            color: var(--secondary-color);
+            margin: 20px 0 10px;
+        }
+        
+        .label-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: var(--tile-bg);
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .label-section h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .label-image {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .label-example {
+            background: var(--tile-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .label-tips {
+            background-color: rgba(var(--primary-color-rgb), 0.1);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            clear: both;
+        }
+        
+        .label-tips h4 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        
+        .label-tips ul {
+            margin: 10px 0 0 20px;
+        }
+        
+        .label-tips li {
+            margin-bottom: 8px;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .back-btn:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        .nutrition-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        .nutrition-table th, .nutrition-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .nutrition-table th {
+            background-color: rgba(var(--primary-color-rgb), 0.1);
+            color: var(--secondary-color);
+        }
+        
+        .nutrition-table tr:hover {
+            background-color: rgba(var(--primary-color-rgb), 0.05);
+        }
+        
+        /* Nutrition Label Styles */
+        .nutrition-label-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .nutrition-label-visual {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .nutrition-label {
+            width: 280px;
+            border: 2px solid #000;
+            padding: 10px;
+            font-family: 'Arial', sans-serif;
+            background-color: white;
+            color: black;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .nutrition-label:hover {
+            transform: scale(1.02);
+        }
+        
+        .nutrition-label-header h2 {
+            font-size: 2rem;
+            font-weight: 900;
+            margin: 0;
+            padding: 0;
+            border-bottom: 10px solid #000;
+            color: #000;
+        }
+        
+        .serving-info {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .serving-size-container {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .serving-size-label {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .serving-size-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .calories-container {
+            border-bottom: 10px solid #000;
+        }
+        
+        .amount-per-serving {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin: 3px 0;
+        }
+        
+        .calories-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .calories-label {
+            font-size: 1.6rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        
+        .calories-value {
+            font-size: 2.2rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        
+        .daily-value-container {
+            font-size: 0.9rem;
+        }
+        
+        .daily-value-header {
+            font-weight: bold;
+            text-align: right;
+            margin: 5px 0;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+        }
+        
+        .nutrient-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #999;
+        }
+        
+        .sub-nutrient {
+            padding-left: 20px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .indented {
+            padding-left: 35px;
+        }
+        
+        .nutrient-name {
+            flex: 3;
+        }
+        
+        .nutrient-dv {
+            flex: 1;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .divider {
+            height: 10px;
+            border-bottom: 10px solid #000;
+            margin: 5px 0;
+        }
+        
+        .footnote {
+            font-size: 0.8rem;
+            margin-top: 10px;
+            line-height: 1.2;
+        }
+        
+        .nutrition-label-explanation {
+            flex: 1;
+        }
+        
+        .interactive-guide {
+            background-color: rgba(var(--primary-rgb), 0.1);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .info-icon::before {
+            content: '\1F6C8';
+            margin-right: 5px;
+            color: var(--primary-color);
+        }
+        
+        .interactive-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            margin-right: 8px;
+            position: relative;
+        }
+        
+        .interactive-indicator::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            top: -6px;
+            left: -6px;
+            animation: pulse 2s infinite;
+            opacity: 0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+        
+        .explanation-item {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: rgba(var(--primary-color-rgb), 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .explanation-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .explanation-item h4 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .active-explanation .interactive-indicator::after {
+            opacity: 1;
+            animation: pulse 1s infinite;
+        }
+        
+        /* Interactive Highlighting */
+         .highlighted {
+             background-color: rgba(var(--primary-color-rgb), 0.2) !important;
+             border-radius: 4px;
+             box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.5);
+             transition: all 0.3s ease;
+             position: relative;
+             z-index: 1;
+         }
+         
+         .active-explanation {
+             transform: translateX(10px);
+             box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+             background-color: rgba(var(--primary-color-rgb), 0.1);
+         }
+         
+         .explanation-item {
+             cursor: pointer;
+         }
+        
+        /* Mobile Responsive Styles */
+        @media screen and (min-width: 768px) {
+            .nutrition-label-container {
+                flex-direction: row;
+            }
+        }
+        
+        @media screen and (max-width: 767px) {
+            .nutrition-label {
+                width: 100%;
+                max-width: 320px;
+            }
+        }
+        
+        @media screen and (max-width: 480px) {
+            .education-container {
+                padding: 10px;
+            }
+            
+            .label-section {
+                padding: 15px;
+            }
+            
+            .label-example {
+                padding: 15px;
+            }
+            
+            .nutrition-table th, .nutrition-table td {
+                padding: 8px 5px;
+                font-size: 0.85rem;
+            }
+            
+            .education-card {
+                padding: 15px;
+            }
+            
+            .explanation-item {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Food Scanner</h1>
+            <p>Food Label Guide</p>
+            <div class="header-decoration">
+                <span class="decoration-dot"></span>
+                <span class="decoration-dot"></span>
+                <span class="decoration-dot"></span>
+            </div>
+            <div class="app-controls">
+                <button id="dark-mode-toggle" class="btn icon-btn" title="Toggle Dark Mode">
+                    <i class="mode-icon icon"></i>
+                </button>
+            </div>
+        </header>
+        
+        <div class="education-container">
+            <a href="/" class="back-btn">← Back to Scanner</a>
+            
+            <div class="education-card">
+                <h2>Understanding Food Labels</h2>
+                <p>Food labels provide valuable information about the nutritional content of packaged foods. Learning how to read and interpret these labels can help you make healthier food choices.</p>
+                
+                <div class="label-section">
+                    <h3>Anatomy of a Nutrition Facts Label</h3>
+                    <p>The Nutrition Facts label is required on most packaged foods. Here's what each section means:</p>
+                    
+                    <div class="nutrition-label-container">
+                        <div class="nutrition-label-visual">
+                            <div class="nutrition-label">
+                                <div class="nutrition-label-header">
+                                    <h2>Nutrition Facts</h2>
+                                    <p class="serving-info">8 servings per container</p>
+                                    <div class="serving-size-container">
+                                        <p class="serving-size-label">Serving size</p>
+                                        <p class="serving-size-value">2/3 cup (55g)</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="calories-container">
+                                    <p class="amount-per-serving">Amount per serving</p>
+                                    <div class="calories-row">
+                                        <p class="calories-label">Calories</p>
+                                        <p class="calories-value">230</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="daily-value-container">
+                                    <p class="daily-value-header">% Daily Value*</p>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name"><strong>Total Fat</strong> 8g</div>
+                                        <div class="nutrient-dv">10%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row sub-nutrient">
+                                        <div class="nutrient-name">Saturated Fat 1g</div>
+                                        <div class="nutrient-dv">5%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row sub-nutrient">
+                                        <div class="nutrient-name"><em>Trans</em> Fat 0g</div>
+                                        <div class="nutrient-dv"></div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name"><strong>Cholesterol</strong> 0mg</div>
+                                        <div class="nutrient-dv">0%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name"><strong>Sodium</strong> 160mg</div>
+                                        <div class="nutrient-dv">7%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name"><strong>Total Carbohydrate</strong> 37g</div>
+                                        <div class="nutrient-dv">13%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row sub-nutrient">
+                                        <div class="nutrient-name">Dietary Fiber 4g</div>
+                                        <div class="nutrient-dv">14%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row sub-nutrient">
+                                        <div class="nutrient-name">Total Sugars 12g</div>
+                                        <div class="nutrient-dv"></div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row sub-nutrient indented">
+                                        <div class="nutrient-name">Includes 10g Added Sugars</div>
+                                        <div class="nutrient-dv">20%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name"><strong>Protein</strong> 3g</div>
+                                        <div class="nutrient-dv"></div>
+                                    </div>
+                                    
+                                    <div class="divider"></div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name">Vitamin D 2mcg</div>
+                                        <div class="nutrient-dv">10%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name">Calcium 260mg</div>
+                                        <div class="nutrient-dv">20%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name">Iron 8mg</div>
+                                        <div class="nutrient-dv">45%</div>
+                                    </div>
+                                    
+                                    <div class="nutrient-row">
+                                        <div class="nutrient-name">Potassium 235mg</div>
+                                        <div class="nutrient-dv">6%</div>
+                                    </div>
+                                    
+                                    <p class="footnote">* The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="nutrition-label-explanation">
+                            <div class="interactive-guide">
+                                <p><i class="info-icon"></i> <strong>Interactive Guide:</strong> Click or hover over each section below to highlight the corresponding part of the nutrition label.</p>
+                            </div>
+                            
+                            <div class="explanation-item" id="serving-info-explanation">
+                                <h4><span class="interactive-indicator"></span> 1. Serving Information</h4>
+                                <p>This section shows how many servings are in the package and the serving size. All the nutrition information on the label is based on one serving, so if you eat more or less than the serving size, you'll need to adjust the values accordingly.</p>
+                            </div>
+                            
+                            <div class="explanation-item" id="calories-explanation">
+                                <h4><span class="interactive-indicator"></span> 2. Calories</h4>
+                                <p>This shows the total number of calories in one serving of the food. Calories provide a measure of how much energy you get from a serving of the food.</p>
+                            </div>
+                            
+                            <div class="explanation-item" id="nutrients-limit-explanation">
+                                <h4><span class="interactive-indicator"></span> 3. Nutrients to Limit</h4>
+                                <p>These are nutrients that Americans generally consume in adequate or excessive amounts, and overconsumption may increase the risk of certain chronic diseases:</p>
+                                <ul>
+                                    <li><strong>Total Fat, Saturated Fat, and Trans Fat:</strong> High intake of saturated and trans fats is linked to increased risk of heart disease.</li>
+                                    <li><strong>Cholesterol:</strong> Too much cholesterol can increase the risk of heart disease.</li>
+                                    <li><strong>Sodium:</strong> High sodium intake can lead to high blood pressure.</li>
+                                    <li><strong>Added Sugars:</strong> These contribute calories but few or no nutrients.</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="explanation-item" id="nutrients-get-enough-explanation">
+                                <h4><span class="interactive-indicator"></span> 4. Nutrients to Get Enough Of</h4>
+                                <p>These are nutrients that many Americans don't get enough of, and inadequate intake may be associated with health concerns:</p>
+                                <ul>
+                                    <li><strong>Dietary Fiber:</strong> Important for digestive health and may help reduce the risk of heart disease.</li>
+                                    <li><strong>Vitamin D:</strong> Essential for bone health and immune function.</li>
+                                    <li><strong>Calcium:</strong> Important for bone health.</li>
+                                    <li><strong>Iron:</strong> Essential for carrying oxygen in the blood.</li>
+                                    <li><strong>Potassium:</strong> Helps maintain healthy blood pressure.</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="explanation-item" id="daily-value-explanation">
+                                <h4><span class="interactive-indicator"></span> 5. % Daily Value (%DV)</h4>
+                                <p>The %DV shows how much a nutrient in a serving of food contributes to a total daily diet. The %DV helps you determine if a serving of food is high or low in a nutrient.</p>
+                                
+                                <div class="label-tips">
+                                    <h4>Quick Guide to %DV</h4>
+                                    <ul>
+                                        <li><strong>5% DV or less:</strong> Low in that nutrient</li>
+                                        <li><strong>20% DV or more:</strong> High in that nutrient</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="label-section">
+                    <h3>Ingredient List</h3>
+                    <p>The ingredient list shows all ingredients in a food product in descending order by weight. This means the first ingredient listed is present in the largest amount.</p>
+                    
+                    <div class="label-tips">
+                        <h4>Reading Ingredient Lists</h4>
+                        <ul>
+                            <li>Ingredients are listed in descending order by weight</li>
+                            <li>Look for products with shorter ingredient lists</li>
+                            <li>Be cautious of products with many unfamiliar ingredients</li>
+                            <li>Watch out for different forms of sugar (ingredients ending in "-ose" like fructose, dextrose, etc.)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="label-section">
+                    <h3>Common Food Label Claims and What They Mean</h3>
+                    
+                    <table class="nutrition-table">
+                        <thead>
+                            <tr>
+                                <th>Claim</th>
+                                <th>What It Means</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Low Calorie</strong></td>
+                                <td>40 calories or less per serving</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Low Fat</strong></td>
+                                <td>3g or less of fat per serving</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Low Sodium</strong></td>
+                                <td>140mg or less of sodium per serving</td>
+                            </tr>
+                            <tr>
+                                <td><strong>High Fiber</strong></td>
+                                <td>5g or more of fiber per serving</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Good Source of</strong></td>
+                                <td>The food provides 10-19% of the Daily Value for a particular nutrient</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Excellent Source of</strong></td>
+                                <td>The food provides 20% or more of the Daily Value for a particular nutrient</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Light/Lite</strong></td>
+                                <td>The product contains 1/3 fewer calories or 50% less fat than the regular product</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Natural</strong></td>
+                                <td>The product does not contain artificial ingredients, preservatives, or color additives</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Organic</strong></td>
+                                <td>The product meets specific USDA organic standards for production, handling, and processing</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="label-tips">
+                    <h4>Using Food Labels Effectively</h4>
+                    <ul>
+                        <li>Compare similar products to find the healthier option</li>
+                        <li>Look beyond the front of the package claims and check the Nutrition Facts label</li>
+                        <li>Consider your personal health needs when evaluating products</li>
+                        <li>Remember that whole, unprocessed foods often don't have nutrition labels but are generally healthy choices</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Dark mode toggle functionality
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        
+        // Check if dark mode is enabled in localStorage
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+        }
+        
+        // Toggle dark mode
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            
+            // Save preference to localStorage
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('darkMode', 'enabled');
+            } else {
+                localStorage.setItem('darkMode', 'disabled');
+            }
+        });
+        
+        // Nutrition Label Interactive Features
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all explanation items
+            const explanationItems = document.querySelectorAll('.explanation-item');
+            const nutritionLabel = document.querySelector('.nutrition-label');
+            
+            // Define the sections of the nutrition label that correspond to each explanation
+            const labelSections = {
+                'serving-info-explanation': ['.serving-info', '.serving-size-container'],
+                'calories-explanation': ['.calories-container'],
+                'nutrients-limit-explanation': ['.nutrient-row:nth-child(n+1):nth-child(-n+9)'],
+                'nutrients-get-enough-explanation': ['.nutrient-row:nth-child(n+12):nth-child(-n+16)'],
+                'daily-value-explanation': ['.daily-value-header', '.nutrient-dv']
+            };
+            
+            // Add event listeners to explanation items
+            explanationItems.forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    // Get the ID of the current explanation item
+                    const id = this.id;
+                    
+                    // Reset all highlights
+                    resetHighlights();
+                    
+                    // Highlight corresponding sections in the nutrition label
+                    if (labelSections[id]) {
+                        labelSections[id].forEach(selector => {
+                            const elements = nutritionLabel.querySelectorAll(selector);
+                            elements.forEach(el => {
+                                el.classList.add('highlighted');
+                            });
+                        });
+                    }
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    resetHighlights();
+                });
+            });
+            
+            // Function to reset all highlights
+            function resetHighlights() {
+                const highlightedElements = nutritionLabel.querySelectorAll('.highlighted');
+                highlightedElements.forEach(el => {
+                    el.classList.remove('highlighted');
+                });
+            }
+            
+            // Add touch support for mobile devices
+            explanationItems.forEach(item => {
+                item.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    const id = this.id;
+                    
+                    // Check if this item is already active
+                    const isActive = this.classList.contains('active-explanation');
+                    
+                    // Reset all items and highlights
+                    explanationItems.forEach(i => i.classList.remove('active-explanation'));
+                    resetHighlights();
+                    
+                    // If the item wasn't active before, activate it
+                    if (!isActive) {
+                        this.classList.add('active-explanation');
+                        
+                        // Highlight corresponding sections
+                        if (labelSections[id]) {
+                            labelSections[id].forEach(selector => {
+                                const elements = nutritionLabel.querySelectorAll(selector);
+                                elements.forEach(el => {
+                                    el.classList.add('highlighted');
+                                });
+                            });
+                        }
+                        
+                        // Scroll the nutrition label into view if needed
+                        nutritionLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

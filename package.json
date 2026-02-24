@@ -1,0 +1,20 @@
+{
+  "name": "food-scanner",
+  "version": "1.0.0",
+  "description": "A web application that scans food barcodes and provides detailed nutritional information",
+  "main": "index.js",
+  "scripts": {
+    "start": "python app.py",
+    "start:prod": "python app.py"
+  },
+  "keywords": [
+    "food",
+    "scanner",
+    "nutrition",
+    "barcode"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+  }
+}

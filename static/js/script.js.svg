@@ -1,0 +1,532 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
+    const startScannerBtn = document.getElementById('start-scanner');
+    const stopScannerBtn = document.getElementById('stop-scanner');
+    const switchCameraBtn = document.getElementById('switch-camera');
+    const darkModeToggleBtn = document.getElementById('dark-mode-toggle');
+    const scannerVideo = document.getElementById('scanner');
+    const barcodeInput = document.getElementById('barcode-input');
+    const submitBarcodeBtn = document.getElementById('submit-barcode');
+    const loadingSection = document.getElementById('loading');
+    const productInfoSection = document.getElementById('product-info');
+    const errorMessageSection = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+    const tryAgainBtn = document.getElementById('try-again');
+    const apiStatusContainer = document.getElementById('api-status');
+    
+    // Check which APIs are configured
+    checkApiStatus();
+    
+    // Initialize dark mode from localStorage
+    if (localStorage.getItem('darkMode') === 'enabled') {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Scanner variables
+    let codeReader = null;
+    let selectedDeviceId = null;
+    let availableCameras = [];
+    let currentCameraIndex = 0;
+    let scanning = false;
+
+    // Initialize the barcode scanner
+    function initScanner() {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        
+        // Get available video devices
+        codeReader.listVideoInputDevices()
+            .then((videoInputDevices) => {
+                if (videoInputDevices.length === 0) {
+                    showError('No camera detected. Please enter the barcode manually.');
+                    return;
+                }
+
+                // Store all available cameras
+                availableCameras = videoInputDevices;
+                
+                // Find the index of the rear camera if available
+                const rearCameraIndex = availableCameras.findIndex(device => 
+                    /(back|rear)/i.test(device.label));
+                
+                // Set the current camera index to the rear camera if found, otherwise use the first camera
+                currentCameraIndex = rearCameraIndex !== -1 ? rearCameraIndex : 0;
+                selectedDeviceId = availableCameras[currentCameraIndex].deviceId;
+                
+                // Enable the start scanner button
+                startScannerBtn.disabled = false;
+                
+                // Enable camera switch button if more than one camera is available
+                if (availableCameras.length > 1) {
+                    switchCameraBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showError('Failed to access camera. Please check camera permissions or enter the barcode manually.');
+            });
+    }
+
+    // Start the scanner
+    function startScanner() {
+        if (!codeReader || !selectedDeviceId) {
+            showError('Scanner not initialized. Please refresh the page.');
+            return;
+        }
+
+        hideAllSections();
+        scanning = true;
+        startScannerBtn.disabled = true;
+        stopScannerBtn.disabled = false;
+        
+        // Enable camera switch button if more than one camera is available
+        if (availableCameras.length > 1) {
+            switchCameraBtn.disabled = false;
+        }
+
+        codeReader.decodeFromVideoDevice(selectedDeviceId, scannerVideo, (result, err) => {
+            if (result && scanning) {
+                // Stop scanning once a barcode is detected
+                stopScanner();
+                // Process the barcode
+                processBarcode(result.text);
+            }
+            
+            if (err && !(err instanceof ZXing.NotFoundException)) {
+                console.error(err);
+                if (scanning) {
+                    stopScanner();
+                    showError('Scanner error. Please try again or enter the barcode manually.');
+                }
+            }
+        });
+    }
+
+    // Stop the scanner
+    function stopScanner() {
+        if (codeReader) {
+            codeReader.reset();
+            scanning = false;
+            startScannerBtn.disabled = false;
+            stopScannerBtn.disabled = true;
+            switchCameraBtn.disabled = true;
+        }
+    }
+
+    // Process the barcode (either scanned or manually entered)
+    function processBarcode(barcode) {
+        if (!barcode || barcode.trim() === '') {
+            showError('Please enter a valid barcode.');
+            return;
+        }
+
+        // Show loading state
+        hideAllSections();
+        loadingSection.classList.remove('hidden');
+
+        // Call the backend API
+        fetch('/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ barcode: barcode.trim() })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            displayProductInfo(data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError(error.message || 'Failed to fetch product information. Please try again.');
+        });
+    }
+
+    // Check which APIs are configured
+    function checkApiStatus() {
+        fetch('/api-status')
+            .then(response => response.json())
+            .then(data => {
+                let statusHtml = '<h3>Data Sources Status</h3><div class="api-status-list">';
+                
+                // OpenFoodFacts status
+                statusHtml += `
+                    <div class="api-status-item">
+                        <div class="status-indicator ${data.openfoodfacts ? 'status-active' : 'status-inactive'}"></div>
+                        <span class="api-name">OpenFoodFacts</span>
+                    </div>`;
+                
+                // USDA status
+                statusHtml += `
+                    <div class="api-status-item">
+                        <div class="status-indicator ${data.usda ? 'status-active' : 'status-inactive'}"></div>
+                        <span class="api-name">USDA FoodData Central</span>
+                    </div>`;
+                
+                // Edamam status
+                statusHtml += `
+                    <div class="api-status-item">
+                        <div class="status-indicator ${data.edamam ? 'status-active' : 'status-inactive'}"></div>
+                        <span class="api-name">Edamam Food Database</span>
+                    </div>`;
+                
+                // IFCT status
+                statusHtml += `
+                    <div class="api-status-item">
+                        <div class="status-indicator ${data.ifct ? 'status-active' : 'status-inactive'}"></div>
+                        <span class="api-name">Indian Food Composition Database</span>
+                    </div>`;
+                
+                // Groq AI status
+                statusHtml += `
+                    <div class="api-status-item">
+                        <div class="status-indicator ${data.groq ? 'status-active' : 'status-inactive'}"></div>
+                        <span class="api-name">Groq AI (for missing data)</span>
+                    </div>`;
+                
+                statusHtml += '</div>';
+                
+                // Add refresh option
+                statusHtml += '<span class="refresh-api-status" onclick="refreshApiStatus()">Refresh Status</span>';
+                
+                if (apiStatusContainer) {
+                    apiStatusContainer.innerHTML = statusHtml;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking API status:', error);
+                if (apiStatusContainer) {
+                    apiStatusContainer.innerHTML = '<p>Error checking data sources</p>';
+                }
+            });
+    }
+
+    // Display product information
+    function displayProductInfo(product) {
+        // Hide loading
+        hideAllSections();
+        
+        // Set product details
+        document.getElementById('product-name').textContent = product.product_name || 'Unknown Product';
+        document.getElementById('product-brand').textContent = product.brand || 'Unknown Brand';
+        document.getElementById('barcode').textContent = product.code || 'N/A';
+        
+        // For categories, check if we need to translate from French or other languages
+        let categories = product.categories || 'N/A';
+        // If categories contain French terms, we can add translation logic here
+        if (categories.includes('Boissons') || categories.includes('préparations')) {
+            // Simple translation of common French food categories
+            categories = categories
+                .replace('Boissons et préparations de boissons', 'Beverages and beverage preparations')
+                .replace('Boissons', 'Beverages')
+                .replace('Boissons gazeuses', 'Carbonated beverages')
+                .replace('Boissons édulcorées', 'Sweetened beverages')
+                .replace('Sodas', 'Sodas')
+                .replace('Sodas au cola', 'Cola sodas')
+                .replace('Sodas light', 'Diet sodas')
+                .replace('Sodas au cola light', 'Diet cola sodas');
+        }
+        document.getElementById('categories').textContent = categories;
+        
+        document.getElementById('serving-size').textContent = product.serving_size || 'N/A';
+        
+        // For ingredients, check if we need to translate from French or other languages
+        let ingredients = product.ingredients_text || 'No ingredients information available';
+        // If ingredients contain French terms, we can add translation logic here
+        if (ingredients.includes('Eau gazéifiée') || ingredients.includes('colorant') || ingredients.includes('acidifiant')) {
+            // Simple translation of common French ingredients
+            ingredients = ingredients
+                .replace('Eau gazéifiée', 'Carbonated water')
+                .replace('colorant', 'coloring')
+                .replace('acidifiant', 'acidifier')
+                .replace('acide phosphorique', 'phosphoric acid')
+                .replace('édulcorants', 'sweeteners')
+                .replace('aspartame', 'aspartame')
+                .replace('acésulfame-K', 'acesulfame-K')
+                .replace('arômes naturels', 'natural flavors')
+                .replace('arôme caféine', 'caffeine flavor')
+                .replace('correcteur d\'acidité', 'acidity regulator')
+                .replace('citrates de sodium', 'sodium citrates');
+        }
+        document.getElementById('ingredients').textContent = ingredients;
+        
+        // Set health recommendation
+        const healthRecommendationElement = document.getElementById('health-recommendation');
+        if (healthRecommendationElement) {
+            healthRecommendationElement.textContent = product.health_recommendation || 'No health recommendation available';
+        }
+        
+        // Set alternative products
+        const alternativeProductsContainer = document.getElementById('alternative-products');
+        if (alternativeProductsContainer) {
+            alternativeProductsContainer.innerHTML = '';
+            
+            if (product.alternative_products && product.alternative_products.length > 0) {
+                product.alternative_products.forEach(alternative => {
+                    const alternativeElement = document.createElement('div');
+                    alternativeElement.className = 'alternative-item';
+                    
+                    const nameElement = document.createElement('span');
+                    nameElement.className = 'alternative-name';
+                    nameElement.textContent = alternative.name;
+                    
+                    const descriptionElement = document.createElement('p');
+                    descriptionElement.className = 'alternative-description';
+                    descriptionElement.textContent = alternative.description;
+                    
+                    alternativeElement.appendChild(nameElement);
+                    alternativeElement.appendChild(descriptionElement);
+                    alternativeProductsContainer.appendChild(alternativeElement);
+                });
+            } else {
+                const noAlternativesElement = document.createElement('p');
+                noAlternativesElement.textContent = 'No alternative products available';
+                alternativeProductsContainer.appendChild(noAlternativesElement);
+            }
+        }
+        
+        // Display data source
+        const dataSourceElement = document.getElementById('data-source');
+        if (dataSourceElement) {
+            dataSourceElement.textContent = product.source || 'Unknown Source';
+        }
+        
+        // Set nutrition grade
+        const nutritionGradeElement = document.getElementById('nutrition-grade');
+        if (product.nutrition_grade_fr) {
+            // Convert the French nutrition grade to English
+            const grade = product.nutrition_grade_fr.toUpperCase();
+            nutritionGradeElement.textContent = grade;
+            nutritionGradeElement.className = 'nutrition-grade grade-' + product.nutrition_grade_fr.toLowerCase();
+            
+            // Add English description of the grade
+            const gradeDescriptions = {
+                'A': 'Excellent',
+                'B': 'Very Good',
+                'C': 'Good',
+                'D': 'Fair',
+                'E': 'Poor'
+            };
+            
+            // Add a tooltip with the English description
+            if (gradeDescriptions[grade]) {
+                nutritionGradeElement.title = gradeDescriptions[grade];
+            }
+        } else {
+            nutritionGradeElement.textContent = '?';
+            nutritionGradeElement.className = 'nutrition-grade';
+        }
+        
+        // Set health score
+        const healthScoreElement = document.getElementById('health-score');
+        const healthRatingElement = document.getElementById('health-rating');
+        const healthRatingTextElement = document.getElementById('health-rating-text');
+        const meterArc = document.getElementById('meter-arc');
+        const scoreContainer = document.querySelector('.health-score-container');
+        
+        if (product.health_score) {
+            const score = product.health_score.score;
+            const rating = product.health_score.rating;
+            
+            healthRatingElement.textContent = rating;
+            healthRatingElement.className = 'health-rating grade-' + rating.toLowerCase();
+            healthScoreElement.textContent = score + '/100';
+            
+            // Set rating text description
+            const ratingDescriptions = {
+                'A': 'Excellent',
+                'B': 'Very Good',
+                'C': 'Good',
+                'D': 'Fair',
+                'E': 'Poor'
+            };
+            
+            if (ratingDescriptions[rating]) {
+                healthRatingTextElement.textContent = ratingDescriptions[rating];
+            }
+            
+            // Apply color class based on score range
+            let scoreClass = '';
+            if (score >= 90) {
+                scoreClass = 'health-score-90-100';
+            } else if (score >= 75) {
+                scoreClass = 'health-score-75-89';
+            } else if (score >= 60) {
+                scoreClass = 'health-score-60-74';
+            } else if (score >= 40) {
+                scoreClass = 'health-score-40-59';
+            } else {
+                scoreClass = 'health-score-0-39';
+            }
+            
+            // Set the meter fill level based on score
+            scoreContainer.className = 'health-score-container ' + scoreClass;
+            
+            // Calculate the arc length for the SVG path
+            const arc_length = meterArc.getTotalLength();
+            const value = (score / 100) * arc_length;
+            
+            // Animate the meter fill after a short delay
+            setTimeout(() => {
+                meterArc.style.strokeDasharray = `${value} ${arc_length - value}`;
+            }, 500);
+            
+            // Keep the health score element class simple
+            healthScoreElement.className = 'health-score';
+        } else {
+            healthScoreElement.textContent = 'N/A';
+            healthRatingElement.textContent = '';
+            healthRatingTextElement.textContent = '';
+            healthScoreElement.className = 'health-score';
+            scoreContainer.className = 'health-score-container';
+            meterArc.style.strokeDasharray = '0 282.78';
+        }
+        
+        // Set allergens
+        const allergensContainer = document.getElementById('allergens');
+        allergensContainer.innerHTML = '';
+        if (product.allergens_tags && product.allergens_tags.length > 0) {
+            product.allergens_tags.forEach(allergen => {
+                // Clean up allergen name and translate if needed
+                let allergenName = allergen
+                    .replace('en:', '')
+                    .replace('fr:', '')
+                    .replace(/-/g, ' ');
+                
+                // Translate common French allergen terms to English
+                const frenchToEnglish = {
+                    'gluten': 'gluten',
+                    'crustaces': 'crustaceans',
+                    'oeufs': 'eggs',
+                    'poisson': 'fish',
+                    'arachides': 'peanuts',
+                    'soja': 'soy',
+                    'lait': 'milk',
+                    'fruits a coque': 'nuts',
+                    'celeri': 'celery',
+                    'moutarde': 'mustard',
+                    'sesame': 'sesame',
+                    'sulfites': 'sulfites',
+                    'lupin': 'lupin',
+                    'mollusques': 'molluscs'
+                };
+                
+                // Check if the allergen name is in French and translate it
+                for (const [french, english] of Object.entries(frenchToEnglish)) {
+                    if (allergenName.toLowerCase().includes(french)) {
+                        allergenName = english;
+                        break;
+                    }
+                }
+                
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag';
+                tagElement.textContent = allergenName;
+                allergensContainer.appendChild(tagElement);
+            });
+        } else {
+            const noAllergensElement = document.createElement('p');
+            noAllergensElement.textContent = 'No allergens information available';
+            allergensContainer.appendChild(noAllergensElement);
+        }
+        
+        // Set nutriments
+        document.getElementById('energy').textContent = formatNutriment(product.nutriments.energy, 'kcal');
+        document.getElementById('fat').textContent = formatNutriment(product.nutriments.fat, 'g');
+        document.getElementById('protein').textContent = formatNutriment(product.nutriments.protein, 'g');
+        document.getElementById('carbs').textContent = formatNutriment(product.nutriments.carbs, 'g');
+        document.getElementById('sugar').textContent = formatNutriment(product.nutriments.sugar, 'g');
+        document.getElementById('salt').textContent = formatNutriment(product.nutriments.salt, 'g');
+        document.getElementById('fiber').textContent = formatNutriment(product.nutriments.fiber, 'g');
+        
+        // Set product image
+        const productImg = document.getElementById('product-img');
+        if (product.image_url) {
+            productImg.src = product.image_url;
+            productImg.alt = product.product_name || 'Product Image';
+        } else {
+            productImg.src = 'https://via.placeholder.com/150?text=No+Image';
+            productImg.alt = 'No Image Available';
+        }
+        
+        // Show product info section
+        productInfoSection.classList.remove('hidden');
+    }
+    
+    // Format nutriment value with unit
+    function formatNutriment(value, unit) {
+        if (value === '' || value === undefined || value === null) {
+            return 'N/A';
+        }
+        return `${value} ${unit}`;
+    }
+
+    // Show error message
+    function showError(message) {
+        hideAllSections();
+        errorText.textContent = message;
+        errorMessageSection.classList.remove('hidden');
+    }
+
+    // Hide all main sections
+    function hideAllSections() {
+        loadingSection.classList.add('hidden');
+        productInfoSection.classList.add('hidden');
+        errorMessageSection.classList.add('hidden');
+    }
+    
+    // Make refreshApiStatus available globally
+    window.refreshApiStatus = function() {
+        checkApiStatus();
+    };
+
+    // Event listeners
+    startScannerBtn.addEventListener('click', startScanner);
+    stopScannerBtn.addEventListener('click', stopScanner);
+    submitBarcodeBtn.addEventListener('click', () => processBarcode(barcodeInput.value));
+    barcodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            processBarcode(barcodeInput.value);
+        }
+    });
+    tryAgainBtn.addEventListener('click', () => {
+        hideAllSections();
+        barcodeInput.value = '';
+    });
+    
+    // Dark mode toggle
+    darkModeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        
+        // Save preference to localStorage
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('darkMode', 'enabled');
+        } else {
+            localStorage.setItem('darkMode', 'disabled');
+        }
+    });
+    
+    // Camera switch
+    switchCameraBtn.addEventListener('click', () => {
+        if (scanning) {
+            // Stop current camera
+            stopScanner();
+            
+            // Switch to next camera
+            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+            selectedDeviceId = availableCameras[currentCameraIndex].deviceId;
+            
+            // Restart scanner with new camera
+            startScanner();
+        }
+    });
+
+    // Initialize the scanner
+    initScanner();
+});

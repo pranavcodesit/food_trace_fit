@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3498db" />
+      <stop offset="100%" stop-color="#2c3e50" />
+    </linearGradient>
+  </defs>
+  <circle cx="96" cy="96" r="96" fill="url(#gradient)" />
+  <g transform="translate(48, 40) scale(0.8)">
+    <!-- Book or educational material -->
+    <path d="M20,30 L20,130 L100,130 C110,130 120,120 120,110 L120,30 C120,20 110,10 100,10 L20,10 L20,30 Z" 
+          fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round" />
+    
+    <!-- Book pages -->
+    <path d="M20,30 L100,30 C105,30 110,35 110,40 L110,120 C110,125 105,130 100,130" 
+          fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+    
+    <!-- Apple symbol for education -->
+    <circle cx="70" cy="70" r="20" fill="#ffffff" />
+    <path d="M70,50 L70,40 C70,35 75,30 80,35" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    
+    <!-- Text lines representing content -->
+    <line x1="40" y1="100" x2="100" y2="100" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    <line x1="40" y1="110" x2="90" y2="110" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+  </g>
+</svg>

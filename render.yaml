@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: foodscanner
+    env: python
+    buildCommand: ./render-build.sh
+    startCommand: npm run start:prod
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.8.15
+      - key: PRODUCTION
+        value: true
+      - key: PYTHONPATH
+        value: /opt/render/project/src

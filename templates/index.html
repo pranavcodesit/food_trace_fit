@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ocr-upload.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Food Scanner">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/icon-192x192.svg') }}">
+    <meta name="description" content="Scan food barcodes to get detailed nutritional information">
+    <style>
+        /* Welcome dialog styles */
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .welcome-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .welcome-dialog {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: welcomeAppear 0.5s forwards;
+        }
+        
+        @keyframes welcomeAppear {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .welcome-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        
+        .welcome-content {
+            padding: 1.5rem;
+        }
+        
+        .feature-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.8rem;
+            margin: 1.5rem 0;
+        }
+        
+        .feature-tile {
+            background: rgba(var(--primary-color-rgb), 0.1);
+            border-radius: 8px;
+            padding: 0.9rem;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .feature-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon {
+            font-size: 1.6rem;
+            margin-bottom: 0.6rem;
+            color: var(--primary-color);
+        }
+        
+        .feature-title {
+            font-weight: 500;
+            margin-bottom: 0.4rem;
+            font-size: 0.95rem;
+        }
+        
+        .feature-description {
+            font-size: 0.8rem;
+            color: var(--muted-color);
+        }
+        
+        .developer-info {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .developer-details {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(var(--primary-color-rgb), 0.05);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--muted-color);
+        }
+        
+        .developer-details p {
+            margin-bottom: 0.5rem;
+        }
+        
+        .developer-details p:last-child {
+            margin-top: 1rem;
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        .welcome-footer {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .welcome-close {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 50px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .welcome-close:hover {
+            background: var(--secondary-color);
+        }
+        
+        /* Feedback section styles */
+        .feedback-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .feedback-section h3 {
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+        
+        .feedback-form {
+            margin-top: 1rem;
+        }
+        
+        #feedback-text {
+            width: 100%;
+            padding: 0.8rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-color);
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 1rem;
+        }
+        
+        .feedback-rating {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .star-rating {
+            display: flex;
+            gap: 0.3rem;
+        }
+        
+        #external-feedback {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            max-width: 200px;
+            margin: 1rem auto;
+        }
+        
+        #external-feedback:hover {
+            background: var(--secondary-color);
+        }
+        
+        .feedback-button {
+            display: block;
+            text-decoration: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Welcome Dialog -->
+    <div class="welcome-overlay" id="welcome-overlay">
+        <div class="welcome-dialog">
+            <div class="welcome-header">
+                <h2>Welcome to Food Scanner</h2>
+                <p>Your personal nutrition assistant</p>
+            </div>
+            <div class="welcome-content">
+                <p>Food Scanner helps you make informed food choices by providing detailed nutritional information from barcodes. This app analyzes product ingredients, calculates health scores, and offers personalized recommendations for healthier alternatives.</p>
+                <div class="warning-message">
+                    <strong>Important:</strong> Please scan only food items. Barcodes for non-food products or those reused by different retailers may lead to incorrect or outdated nutritional data.
+                </div>
+                
+                <div class="feature-tiles">
+                    <div class="feature-tile">
+                        <i class="fas fa-barcode feature-icon"></i>
+                        <div class="feature-title">Barcode Scan</div>
+                        <div class="feature-description">Quickly scan product barcodes for instant info.</div>
+                    </div>
+                    <div class="feature-tile">
+                        <i class="fas fa-file-image feature-icon"></i>
+                        <div class="feature-title">Nutrition Label Scan</div>
+                        <div class="feature-description">Upload images of nutrition labels for detailed breakdown.</div>
+                    </div>
+                    <div class="feature-tile">
+                        <i class="fas fa-upload feature-icon"></i>
+                        <div class="feature-title">Image Upload for OCR</div>
+                        <div class="feature-description">Upload images for text recognition.</div>
+                    </div>
+                    <div class="feature-tile">
+                        <div class="feature-icon">🔍</div>
+                        <h3 class="feature-title">Nutrition Facts</h3>
+                        <p class="feature-description">Get detailed nutritional information including calories, fat, protein, carbs, and more</p>
+                    </div>
+                    <div class="feature-tile">
+                        <div class="feature-icon">📊</div>
+                        <h3 class="feature-title">Health Ratings</h3>
+                        <p class="feature-description">See at-a-glance health, nutrition, and fat scores with color-coded indicators</p>
+                    </div>
+                    <div class="feature-tile">
+                        <div class="feature-icon">📚</div>
+                        <h3 class="feature-title">Educational Resources</h3>
+                        <p class="feature-description">Learn about nutrition basics, food labels, healthy eating tips, and seasonal foods</p>
+                    </div>
+                    <div class="feature-tile">
+                        <div class="feature-icon">📱</div>
+                        <h3 class="feature-title">Offline Access</h3>
+                        <p class="feature-description">Install as a PWA for offline access and faster performance</p>
+                    </div>
+                    <div class="feature-tile">
+                        <div class="feature-icon">🔄</div>
+                        <h3 class="feature-title">Scan History</h3>
+                        <p class="feature-description">Keep track of previously scanned items for quick reference</p>
+                    </div>
+                </div>
+                
+                <div class="developer-info">
+                    <h3>Developed by Utkarsh Tiwari</h3>
+    
+                    <div class="developer-details">
+                        <p>This app was created to help people make better food choices through technology.</p>
+                        <p>Built with Python, Flask, and modern web technologies.</p>
+                        <p>© 2025 Utkarsh Tiwari - All Rights Reserved</p>
+                    </div>
+                </div>
+                
+                <!-- Feedback Section -->
+                <div class="feedback-section">
+                    <h3>We'd Love Your Feedback!</h3>
+                    <p>Help us improve Food Scanner by sharing your thoughts.</p>
+                    <div class="feedback-form">
+                        <a href="https://forms.gle/n5iu4nVSZhkBP2kU8" target="_blank" class="feedback-button">
+                            <button id="external-feedback" class="btn primary">Give Feedback</button>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="welcome-footer">
+                <button class="welcome-close" id="welcome-close">Get Started</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating Chat Button -->
+    <button id="floating-chat-btn" title="Chat with Nutrition Assistant">
+        <i class="chat-icon icon"></i>
+    </button>
+    
+    <div class="container">
+        <header>
+            <h1>Food Scanner</h1>
+            <p>Scan food barcodes to get detailed nutritional information</p>
+            <div class="header-decoration">
+                <span class="decoration-dot"></span>
+                <span class="decoration-dot"></span>
+                <span class="decoration-dot"></span>
+            </div>
+            <div class="app-controls">
+                <button id="dark-mode-toggle" class="btn icon-btn" title="Toggle Dark Mode">
+                    <i class="mode-icon icon"></i>
+                </button>
+                <button id="install-app" class="btn primary" style="display: none;">Install App</button>
+                <button id="show-welcome" class="btn icon-btn" title="Show Welcome">
+                    <i class="info-icon icon"></i>
+                </button>
+                <button id="dashboard-settings" class="btn icon-btn" title="Dashboard Settings">
+                    <i class="settings-icon icon"></i>
+                </button>
+            </div>
+            
+            <!-- Chat Interface -->
+            <div id="chat-container" class="chat-container hidden">
+                <div class="chat-header">
+                    <h3><i class="chat-icon icon"></i>Nutrition Assistant</h3>
+                    <button id="close-chat" class="close-chat">&times;</button>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot">
+                        <div class="message-content">👋 Hello! I'm your nutrition assistant 🤖. I can help you with:
+
+• Information about scanned food products
+• Nutritional advice and recommendations
+• Understanding food labels and ingredients
+• Healthy eating tips and alternatives
+• Answering questions about dietary needs
+• Explaining nutrition concepts
+
+What would you like to know today?</div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" placeholder="Type your question here..." class="chat-input">
+                    <button id="send-message" class="btn primary send-btn"><i class="send-icon icon"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div id="scanner-section" class="scanner-container">
+                <!-- Scan Method Selection Buttons -->
+                <div class="scan-method-selection">
+                    <button id="barcode-scan-btn" class="btn rectangle-btn scan-method-btn active"><i class="fas fa-barcode icon"></i>Barcode Scan</button>
+                    <button id="nutrition-label-btn" class="btn rectangle-btn scan-method-btn"><i class="upload-icon icon"></i>Nutrition Label</button>
+                </div>
+                
+                <div id="scanner-wrapper">
+                    <video id="scanner" autoplay playsinline></video>
+                    <div id="scanner-overlay">
+                        <div class="scan-region"></div>
+                    </div>
+                </div>
+                <div id="zoom-control-container">
+                    <div class="controls-wrapper">
+                        <div class="zoom-wrapper">
+                            <input type="range" id="zoom-control" min="1" max="10" step="0.1" value="1">
+                        </div>
+                        <div class="capture-wrapper">
+                            <button id="capture-button" class="capture-btn" title="Capture Image"><i class="capture-icon icon"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="scanner-message" class="scanner-message">
+                    <!-- Scanner status messages will appear here -->
+                </div>
+                <div class="scanner-controls">
+                    <div class="scanner-buttons">
+                        <button id="start-scanner" class="btn primary"><i class="scanner-icon start icon"></i>Scan</button>
+                        <button id="stop-scanner" class="btn secondary" disabled><i class="scanner-icon stop icon"></i>Stop Scan</button>
+                    </div>
+                    <div class="camera-controls">
+                        <button id="switch-camera" class="btn rectangle-btn" title="Switch Camera" disabled><i class="camera-switch-icon icon"></i>Switch Camera</button>
+                        <button id="toggle-flash" class="btn rectangle-btn" title="Toggle Flash" disabled><i class="flash-icon icon"></i>Toggle Flash</button>
+                    </div>
+                </div>
+                <div class="manual-entry">
+                <input type="text" id="barcode-input" placeholder="Or enter barcode manually...">
+                <button id="submit-barcode" class="btn primary"><i class="submit-icon icon"></i>Submit</button>
+            </div>
+
+            <!-- OCR Upload Section -->
+            <div id="ocr-upload-section" class="ocr-upload-container hidden">
+                <h3><i class="upload-icon icon"></i>Upload Product & Nutrition Label</h3>
+                <p class="ocr-description">Upload clear images of both the product and its nutrition facts label to extract detailed nutritional information. Our system will analyze the images and provide you with comprehensive nutrition data.</p>
+                
+                <div class="upload-instructions">
+                    <div class="instruction-step">
+                        <div class="step-number">1</div>
+                        <h4 class="step-title">Select Images</h4>
+                        <p class="step-description">Upload both a product image and a clear, well-lit photo of its nutrition facts label.</p>
+                    </div>
+                    <div class="instruction-step">
+                        <div class="step-number">2</div>
+                        <h4 class="step-title">Review & Process</h4>
+                        <p class="step-description">Check the previews to ensure both images are clearly visible, then process them.</p>
+                    </div>
+                    <div class="instruction-step">
+                        <div class="step-number">3</div>
+                        <h4 class="step-title">Analyze Results</h4>
+                        <p class="step-description">Review the extracted text and analyze the nutritional information.</p>
+                    </div>
+                </div>
+                
+                <div class="dual-upload-container">
+                    <!-- Product Image Upload -->
+                    <div class="upload-section product-upload">
+                        <h4><i class="product-icon icon"></i>Product Image</h4>
+                        <p class="upload-description">Upload a clear image of the product</p>
+                        <div class="ocr-upload-controls">
+                            <input type="file" id="product-image-input" accept="image/*" class="hidden">
+                            <button id="product-image-button" class="btn primary"><i class="image-icon icon"></i>Select Product Image</button>
+                        </div>
+                        <div id="product-preview-container" class="preview-container hidden">
+                            <h5 class="preview-title"><i class="preview-icon icon"></i>Product Preview</h5>
+                            <img id="product-preview-image" src="" alt="Product Preview">
+                        </div>
+                    </div>
+                    
+                    <!-- Nutrition Label Upload -->
+                    <div class="upload-section nutrition-upload">
+                        <h4><i class="nutrition-facts-icon icon"></i>Nutrition Label</h4>
+                        <p class="upload-description">Upload a clear image of the nutrition facts label</p>
+                        <div class="ocr-upload-controls">
+                            <input type="file" id="nutrition-image-input" accept="image/*" class="hidden">
+                            <button id="nutrition-image-button" class="btn primary"><i class="image-icon icon"></i>Select Nutrition Label</button>
+                        </div>
+                        <div id="ocr-preview-container" class="preview-container hidden">
+                            <h5 class="preview-title"><i class="preview-icon icon"></i>Label Preview</h5>
+                            <img id="ocr-preview-image" src="" alt="Nutrition Label Preview">
+                        </div>
+                    </div>
+                    
+                    <!-- Ingredient Image Upload -->
+                    <div class="upload-section ingredient-upload">
+                        <h4><i class="ingredients-icon icon"></i>Ingredient Image (Optional)</h4>
+                        <p class="upload-description">Upload an image of the ingredients list for better analysis.</p>
+                        <div class="ocr-upload-controls">
+                            <input type="file" id="ingredient-image-input" accept="image/*" class="hidden">
+                            <button id="ingredient-image-button" class="btn primary"><i class="image-icon icon"></i>Select Ingredient Image</button>
+                        </div>
+                        <div id="ingredient-preview-container" class="preview-container hidden">
+                            <h5 class="preview-title"><i class="preview-icon icon"></i>Ingredient Preview</h5>
+                            <img id="ingredient-preview-image" src="" alt="Ingredient Image Preview">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="preview-buttons">
+                    <button id="process-ocr-button" class="btn primary" disabled><i class="process-icon icon"></i>Process Images</button>
+                    <button id="cancel-ocr-button" class="btn secondary"><i class="cancel-icon icon"></i>Cancel</button>
+                </div>
+                
+
+                <div id="ocr-results" class="hidden">
+                    <h4><i class="text-icon icon"></i>Extracted Text</h4>
+                    <div id="ocr-text-content" class="ocr-text-content"></div>
+                    <div class="results-actions">
+                        <button id="analyze-nutrition-button" class="btn primary"><i class="analyze-icon icon"></i>Analyze Nutrition</button>
+                        <button id="edit-ocr-text-button" class="btn secondary"><i class="edit-icon icon"></i>Edit Text</button>
+                    </div>
+                </div>
+                
+                <div id="ocr-message" class="ocr-message hidden"></div>
+                
+                <div id="ocr-progress" class="ocr-progress hidden">
+                    <div class="progress-text">Processing images, please wait...</div>
+                    <div class="progress-bar">
+                        <div class="progress-indicator">
+                            <div class="progress-light"></div>
+                            <div class="progress-light"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="analysis-progress" class="ocr-progress hidden">
+                    <div class="progress-text">Analyzing nutrition data, please wait...</div>
+                    <div class="progress-bar">
+                        <div class="progress-indicator">
+                            <div class="progress-light"></div>
+                            <div class="progress-light"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="nutrition-data" class="hidden">
+                    <!-- Nutrition data will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div id="scan-history-section" class="scan-history-section">
+                <div class="scan-history-header">
+                    <h3><i class="history-icon icon"></i>Scan History</h3>
+                    <button id="clear-history" class="btn icon-btn" title="Clear History"><i class="trash-icon icon"></i></button>
+                </div>
+                <div id="scan-history-items" class="scan-history-items">
+                    <!-- Scan history items will be populated by JavaScript -->
+                </div>
+            </div>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>Fetching product information...</p>
+                <div class="loading-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+
+            <div id="product-info" class="hidden">
+                <div class="product-header">
+                    <div class="product-image">
+                        <img id="product-img" src="{{ url_for('static', filename='icons/icon-192x192.svg') }}" alt="Product Image">
+                    </div>
+                    <div class="product-title">
+                        <h2 id="product-name"></h2>
+                        <p id="product-brand"></p>
+                        <div class="grades-container">
+                            <div class="grade-item">
+                            <span class="grade-label">Nutrition Grade:</span>
+                            <div class="nutrition-grade-container">
+                                <div class="nutrition-grade-markers">
+                                    <span class="grade-marker" id="grade-marker-a">A</span>
+                                    <span class="grade-marker" id="grade-marker-b">B</span>
+                                    <span class="grade-marker" id="grade-marker-c">C</span>
+                                    <span class="grade-marker" id="grade-marker-d">D</span>
+                                    <span class="grade-marker" id="grade-marker-e">E</span>
+                                </div>
+                            </div>
+                            <div class="nutrition-grade-info">
+                                <span id="nutrition-grade" class="nutrition-grade"></span>
+                                <span id="nutrition-score" class="nutrition-score"></span>
+                                <span id="nutrition-grade-text" class="grade-text"></span>
+                            </div>
+                        </div>
+                        <div class="grade-item">
+                            <span class="grade-label">Health Score:</span>
+                            <div class="health-score-container">
+                                <div id="health-score-bar" class="health-score-bar"></div>
+                            </div>
+                            <div class="health-score-info">
+                                <span id="health-score" class="health-score"></span>
+                                <span id="health-rating" class="health-rating"></span>
+                                <span id="health-score-text" class="grade-text"></span>
+                            </div>
+                        </div>
+                        <div class="grade-item fat-score-item">
+                            <span class="grade-label">Fat Score:</span>
+                            <div class="fat-score-container">
+                                <div id="fat-score-bar" class="fat-score-bar"></div>
+                            </div>
+                            <div class="fat-score-info">
+                                <span id="fat-score" class="fat-score"></span>
+                                <span id="fat-rating" class="fat-rating"></span>
+                                <span id="fat-score-text" class="grade-text"></span>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-details">
+                    <div class="detail-section info-tile">
+                        <h3><i class="info-icon icon"></i>General Information</h3>
+                        <div class="detail-item">
+                            <span class="label"><i class="fas fa-barcode detail-icon"></i>Barcode:</span>
+                            <span id="barcode" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label"><i class="fas fa-tags detail-icon"></i>Categories:</span>
+                            <span id="categories" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label"><i class="fas fa-weight detail-icon"></i>Serving Size:</span>
+                            <span id="serving-size" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label"><i class="fas fa-database detail-icon"></i>Data Source:</span>
+                            <span id="data-source" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item ai-suggestion">
+                            <div id="ai-suggestion" class="ai-suggestion-content"></div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section nutrition-tile">
+                        <h3><i class="nutrition-icon icon"></i>Nutrition Facts (per 100g)</h3>
+                        <div class="nutrition-grid">
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="energy"></span>
+                                <span class="nutrition-label">Energy</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="fat"></span>
+                                <span class="nutrition-label">Fat</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="protein"></span>
+                                <span class="nutrition-label">Protein</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="carbs"></span>
+                                <span class="nutrition-label">Carbs</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="sugar"></span>
+                                <span class="nutrition-label">Sugar</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="salt"></span>
+                                <span class="nutrition-label">Salt</span>
+                            </div>
+                            <div class="nutrition-item">
+                                <span class="nutrition-value" id="fiber"></span>
+                                <span class="nutrition-label">Fiber</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section ingredients-tile">
+                        <h3><i class="ingredients-icon icon"></i>Ingredients</h3>
+                        <p id="ingredients"></p>
+                    </div>
+
+                    <div class="detail-section allergens-tile">
+                        <h3><i class="allergens-icon icon"></i>Allergens</h3>
+                        <div id="allergens" class="tags"></div>
+                    </div>
+
+                    <div class="detail-section recommendation-tile">
+                        <h3><i class="recommendation-icon icon"></i>Health Recommendation</h3>
+                        <p id="health-recommendation"></p>
+                    </div>
+
+                    <div class="detail-section alternatives-tile">
+                        <h3><i class="alternatives-icon icon"></i>Healthier Alternatives</h3>
+                        <div id="alternative-products" class="alternatives-list"></div>
+                    </div>
+
+                    <div id="reviews-section" class="detail-section reviews-tile hidden">
+                        <h3><i class="reviews-icon icon"></i>Public Reviews</h3>
+                        <div id="public-reviews" class="reviews-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error-message" class="hidden">
+                <div class="error-icon">❌</div>
+                <p id="error-text"></p>
+                <button id="try-again" class="btn primary">Try Again</button>
+            </div>
+        </main>
+
+        <div id="api-status" class="api-status-container">
+            <!-- API status will be populated by JavaScript -->
+        </div>
+
+        <!-- Education Section -->
+        <section id="education-section" class="card">
+            <h2>Nutrition Education</h2>
+            <p>Learn more about nutrition and making healthy food choices with our educational resources.</p>
+            
+            <div class="education-search">
+                <input type="text" id="education-search-input" placeholder="Search nutrition topics...">
+                <button id="education-search-btn" class="btn primary">Search</button>
+            </div>
+            
+            <div class="education-links">
+                <a href="/education/nutrition-basics" class="education-link">
+                    <div class="education-icon">📚</div>
+                    <div class="education-text">
+                        <h3>Nutrition Basics</h3>
+                        <p>Learn about essential nutrients and their importance for your health</p>
+                    </div>
+                </a>
+                
+                <a href="/education/food-labels" class="education-link">
+                    <div class="education-icon">🏷️</div>
+                    <div class="education-text">
+                        <h3>Food Label Guide</h3>
+                        <p>Understand how to read and interpret food nutrition labels</p>
+                    </div>
+                </a>
+                
+                <a href="/education/seasonal-foods" class="education-link">
+                    <div class="education-icon">🍎</div>
+                    <div class="education-text">
+                        <h3>Seasonal Food Guide</h3>
+                        <p>Discover which foods are in season and their nutritional benefits</p>
+                    </div>
+                </a>
+                
+                <a href="/education/healthy-eating-tips" class="education-link">
+                    <div class="education-icon">🥗</div>
+                    <div class="education-text">
+                        <h3>Healthy Eating Tips</h3>
+                        <p>Practical advice for maintaining a balanced diet in your daily life</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <footer>
+            <p>Data provided by multiple sources including <a href="https://world.openfoodfacts.org/" target="_blank">Open Food Facts</a>, <a href="https://fdc.nal.usda.gov/" target="_blank">USDA FoodData Central</a>, <a href="https://developer.edamam.com/food-database-api" target="_blank">Edamam Food Database</a>, <a href="https://github.com/ifct2017/ifct2017" target="_blank">Indian Food Composition Database (IFCT 2017)</a>, and <a href="https://console.groq.com/" target="_blank">Groq AI</a> for filling missing data</p>
+            <div class="footer-contact">
+                <p>Contact: <a href="mailto:tiwari.utkarsh.me@gmail.com">tiwari.utkarsh.me@gmail.com</a> | <a href="https://www.linkedin.com/in/utkarsh-tiwari-434915285" target="_blank">LinkedIn</a> | <a href="https://github.com/UtkarshBytes" target="_blank">GitHub</a> | <a href="https://forms.gle/n5iu4nVSZhkBP2kU8" target="_blank">Feedback</a></p>
+                <p class="developer-credit">Developed by Utkarsh Tiwari</p>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Dashboard Settings Modal -->
+    <div id="dashboard-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="settings-icon icon"></i>Dashboard Settings</h3>
+                <button id="close-dashboard-modal" class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h4>Layout Customization</h4>
+                    <div class="settings-option">
+                        <label for="history-display">History Display</label>
+                        <select id="history-display" class="settings-select">
+                            <option value="compact">Compact</option>
+                            <option value="detailed">Detailed</option>
+                            <option value="grid">Grid</option>
+                        </select>
+                    </div>
+                    <div class="settings-option">
+                        <label for="history-limit">History Items Limit</label>
+                        <select id="history-limit" class="settings-select">
+                            <option value="5">5 items</option>
+                            <option value="10" selected>10 items</option>
+                            <option value="15">15 items</option>
+                            <option value="20">20 items</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h4>Widget Visibility</h4>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-nutrition" checked>
+                        <label for="show-nutrition">Nutrition Facts</label>
+                    </div>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-ingredients" checked>
+                        <label for="show-ingredients">Ingredients</label>
+                    </div>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-allergens" checked>
+                        <label for="show-allergens">Allergens</label>
+                    </div>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-recommendations" checked>
+                        <label for="show-recommendations">Health Recommendations</label>
+                    </div>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-alternatives" checked>
+                        <label for="show-alternatives">Healthier Alternatives</label>
+                    </div>
+                    <div class="settings-option checkbox">
+                        <input type="checkbox" id="show-reviews" checked>
+                        <label for="show-reviews">Public Reviews</label>
+                    </div>
+                </div>
+                
+                <div class="settings-actions">
+                    <button id="save-dashboard-settings" class="btn primary">Save Settings</button>
+                    <button id="reset-dashboard-settings" class="btn secondary">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preload ZXing library to ensure it's available before execution -->
+    <link rel="preload" href="{{ url_for('static', filename='js/zxing-library.min.js') }}" as="script">
+    <link rel="preload" href="/zxing-library.js" as="script">
+    
+    <!-- Load ZXing library locally instead of from CDN to ensure availability -->
+    <!-- Try loading from static directory first -->
+    <script src="{{ url_for('static', filename='js/zxing-library.min.js') }}" defer></script>
+    
+    <!-- Test script removed to prevent popup -->
+    <!-- <script src="{{ url_for('static', filename='js/zxing-test.js') }}" defer></script> -->
+    
+    <!-- Main application script -->
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    
+    <!-- Fallback script to handle potential loading issues in production -->
+    <script>
+        window.addEventListener('load', function() {
+            // Check if ZXing loaded correctly after page load
+            setTimeout(function() {
+                if (typeof ZXing === 'undefined') {
+                    console.error('ZXing failed to load after page load, attempting to reload library');
+                    
+                    // Try loading from direct route first
+                    var script = document.createElement('script');
+                    script.src = "/zxing-library.js";
+                    script.onload = function() {
+                        console.log('ZXing library loaded via direct route fallback');
+                        // Reinitialize scanner if the global function exists
+                        if (typeof initScanner === 'function') {
+                            initScanner();
+                        }
+                    };
+                    script.onerror = function() {
+                        console.error('Failed to load ZXing from direct route, trying static route');
+                        // If direct route fails, try static route
+                        var staticScript = document.createElement('script');
+                        staticScript.src = "{{ url_for('static', filename='js/zxing-library.min.js') }}";
+                        staticScript.onload = function() {
+                            console.log('ZXing library loaded via static route fallback');
+                            // Reinitialize scanner if the global function exists
+                            if (typeof initScanner === 'function') {
+                                initScanner();
+                            }
+                        };
+                        staticScript.onerror = function() {
+                            console.error('All attempts to load ZXing library failed');
+                            alert('Failed to load barcode scanner library. Please try refreshing the page or use a different browser.');
+                        };
+                        document.body.appendChild(staticScript);
+                    };
+                    document.body.appendChild(script);
+                }
+            }, 1000); // Check after 1 second
+        });
+    </script>
+
+
+    
+    <!-- PWA Installation Script -->
+    <script>
+        // Check if the browser supports service workers
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+        
+        // PWA installation
+        let deferredPrompt;
+        const installButton = document.getElementById('install-app');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            installButton.style.display = 'block';
+        });
+        
+        installButton.addEventListener('click', () => {
+            // Hide the install button
+            installButton.style.display = 'none';
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                } else {
+                    console.log('User dismissed the install prompt');
+                }
+                // Clear the deferredPrompt variable
+                deferredPrompt = null;
+            });
+        });
+    </script>
+    <!-- OCR Upload Script -->
+    <script src="{{ url_for('static', filename='js/ocr-upload.js') }}"></script>
+</body>
+</html>
