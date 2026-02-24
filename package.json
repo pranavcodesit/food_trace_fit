@@ -4,8 +4,8 @@
   "description": "A web application that scans food barcodes and provides detailed nutritional information",
   "main": "index.js",
   "scripts": {
-    "start": "python app.py",
-    "start:prod": "python app.py"
+    "start": "python api/index.py",
+    "build": "cd angular && npm install && npm run build -- --output-path ../public"
   },
   "keywords": [
     "food",

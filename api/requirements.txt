@@ -1,0 +1,20 @@
+Flask==2.2.5
+requests==2.31.0
+python-dotenv==0.21.1
+# ifct2017 is a JavaScript package, not Python
+pandas==1.5.3
+numpy==1.24.3
+openpyxl==3.1.2
+groq==0.13.0
+httpx>=0.27.0,<0.28.0
+# Security packages
+Flask-Limiter==3.3.1
+Flask-Cors==3.0.10
+Flask-Talisman==1.1.0
+gunicorn==21.2.0
+# For deployment
+waitress==2.1.2
+# Build dependencies - must be installed first
+setuptools==65.5.1
+wheel==0.38.0
+pyproject-hooks==1.0.0
